@@ -1,12 +1,15 @@
 package com.xuecheng.content.model.dto;
 
 import com.xuecheng.content.model.po.CourseBase;
+import lombok.Data;
 
 /**
  * @author cornelius
  * @date 2023/5/11 09:22
  * @description 课程基本信息dto 营销信息
  */
+
+@Data
 public class CourseBaseInfoDto extends CourseBase {
 
     /**

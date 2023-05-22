@@ -2,6 +2,7 @@ package com.xuecheng.content.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.xuecheng.base.exception.XueChengPlusException;
 import com.xuecheng.base.model.PageResult;
 import com.xuecheng.base.model.PagesParms;
 import com.xuecheng.content.mapper.CourseBaseMapper;
@@ -9,6 +10,7 @@ import com.xuecheng.content.mapper.CourseCategoryMapper;
 import com.xuecheng.content.mapper.CourseMarketMapper;
 import com.xuecheng.content.model.dto.AddCourseDto;
 import com.xuecheng.content.model.dto.CourseBaseInfoDto;
+import com.xuecheng.content.model.dto.EditCourseDto;
 import com.xuecheng.content.model.dto.QueryCourseParamsDto;
 import com.xuecheng.content.model.po.CourseBase;
 import com.xuecheng.content.model.po.CourseCategory;
@@ -18,9 +20,7 @@ import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import javax.annotation.Resource;
-import java.sql.SQLOutput;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -67,7 +67,7 @@ public class CourseBaseInfoServiceimpl implements CourseBaseInfoService {
     public CourseBaseInfoDto createCourseBase(Long companyId, AddCourseDto dto) {
 
 
-        //参数的合法性校验
+      /*  //参数的合法性校验
         if (StringUtils.isBlank(dto.getName())) {
            throw new RuntimeException("课程名称为空");
           //  XueChengPlusException.cast("课程名称为空");
@@ -96,6 +96,8 @@ public class CourseBaseInfoServiceimpl implements CourseBaseInfoService {
         if (StringUtils.isBlank(dto.getCharge())) {
             throw new RuntimeException("收费规则为空");
         }
+*/
+
 
         //将课程信息表course_base写入数据
         CourseBase courseBaseNew = new CourseBase();
@@ -109,7 +111,7 @@ public class CourseBaseInfoServiceimpl implements CourseBaseInfoService {
         courseBaseNew.setCreateDate(LocalDateTime.now());
         int insert = courseBaseMapper.insert(courseBaseNew);
         if(insert<=0){
-            System.out.println("=====jinlaile");
+            //System.out.println("=====");
             throw new RuntimeException("课程插入失败");
         }
 
@@ -123,9 +125,7 @@ public class CourseBaseInfoServiceimpl implements CourseBaseInfoService {
         //处理是否收费的情况来插入数据
         saveCourseMarketNew(courseMarketNew);
         CourseBaseInfoDto courseBaseInfo = getCourseBaseInfo(courseId);
-
         return courseBaseInfo;
-
     }
 
     /**
@@ -134,7 +134,7 @@ public class CourseBaseInfoServiceimpl implements CourseBaseInfoService {
      * @return 课程的总信息，返回给接口
      */
 
-    public CourseBaseInfoDto getCourseBaseInfo(long courseId) {
+    public CourseBaseInfoDto getCourseBaseInfo(Long courseId) {
         //从课程基本信息表查询
         CourseBase courseBase = courseBaseMapper.selectById(courseId);
         if (courseBase == null) {
@@ -149,6 +149,10 @@ public class CourseBaseInfoServiceimpl implements CourseBaseInfoService {
             BeanUtils.copyProperties(courseMarket,courseBaseInfoDto);
         }
         //得到分类信息插入数据,首先根据小分类的id得到课程分类的对象
+      /*  String st = courseBase.getSt();
+        System.out.println(st);
+        CourseBase courseBase1 = courseBaseMapper.selectById(st);
+        System.out.println(courseBase1);*/
         CourseCategory selectByIdSt = courseCategoryMapper.selectById(courseBaseInfoDto.getSt());
         //设置小分类名称
         courseBaseInfoDto.setSt(selectByIdSt.getName());
@@ -158,6 +162,31 @@ public class CourseBaseInfoServiceimpl implements CourseBaseInfoService {
         return courseBaseInfoDto;
     }
 
+    @Override
+    public CourseBaseInfoDto updateCourseBase(Long companyId, EditCourseDto editCourseDto) {
+        //得到课程ID
+        Long courseId = editCourseDto.getId();
+        CourseBase courseBase = courseBaseMapper.selectById(courseId);
+        if (courseBase == null) {
+            XueChengPlusException.cast("课程不存在");
+        }
+        //检验本机构只能修改本机构的课程
+        if (!courseBase.getCompanyId() .equals(companyId)) {
+            XueChengPlusException.cast("没有权限修改其他机构的课程");
+        }
+        //封装基本的信息
+        BeanUtils.copyProperties(editCourseDto,courseBase);
+        courseBase.setChangeDate(LocalDateTime.now());
+        //更新到数据库
+        courseBaseMapper.updateById(courseBase);
+        //更新营销信息
+        CourseMarket courseMarket = courseMarketMapper.selectById(courseId);
+        BeanUtils.copyProperties(editCourseDto,courseMarket);
+        courseMarket.setId(courseId);
+        saveCourseMarketNew(courseMarket);
+        CourseBaseInfoDto courseBaseInfo = this.getCourseBaseInfo(courseId);
+        return courseBaseInfo;
+    }
 
 
     /**
